@@ -16,6 +16,31 @@ from sklearn.metrics import confusion_matrix
 import pandas as pd
 import numpy as np
 
+
+def is_folder_empty(folder_path):
+    # Check if the folder exists
+    if not os.path.exists(folder_path):
+        print(f"The folder '{folder_path}' does not exist.")
+        return False
+
+    # Check if the folder is empty
+    for root, dirs, files in os.walk(folder_path):
+        if not dirs and not files:
+            print(f"The folder '{root}' is empty.")
+            return True  # The folder is empty
+
+    print(f"The folder '{folder_path}' is not empty.")
+    return False
+
+def get_subdirectories(folder_path):
+    subdirectories = []
+    for entry in os.listdir(folder_path):
+        entry_path = os.path.join(folder_path, entry)
+        if os.path.isdir(entry_path):
+            subdirectories.append(entry_path)
+    return subdirectories
+
+
 def calculate_accuracy(y_pred, y):
     top_pred = y_pred.argmax(1, keepdim=True)
     correct = top_pred.eq(y.view_as(top_pred)).sum()
@@ -36,11 +61,29 @@ if __name__ == '__main__':
             std=[0.5, 0.5, 0.5]),
     ])
 
+    # Update input folder and output folder paths
     input_folder = r"C:\Users\aahire\Documents\CSS581\Midterm\Data\IMAGES_HighPassFilter"
-    output_folder = r"C:\Users\aahire\Documents\CSS581\Midterm\Data\IMAGES_Split_HighPass"
+    output_folder = r"C:\Users\aahire\Documents\CSS581\Midterm\Data\Small_Dataset"
 
     ### Uncomment only for first time. once data is splitted into train and validation, comment it out
     #splitfolders.ratio(input_folder, output_folder, seed=42, ratio=(0.8, 0.2), group_prefix=None)
+
+    # Check for empty folders in the training and validation data
+    train_path = os.path.join(output_folder, 'train')
+    val_path = os.path.join(output_folder, 'val')
+
+    train_directories = get_subdirectories(train_path)
+    val_directories = get_subdirectories(val_path)
+
+    for train_folder_path in train_directories:
+        is_train_empty = is_folder_empty(train_folder_path)
+    
+    for val_folder_path in val_directories:
+        is_val_empty = is_folder_empty(val_folder_path)
+    
+    if(is_train_empty or is_val_empty):
+        print("Empty folder found for traiing and validation data, exiting")
+        exit(0)
 
     # Create datasets for the training and testing sets
     train_dataset = torchvision.datasets.ImageFolder(output_folder + '/train', transform=transform)
@@ -51,7 +94,7 @@ if __name__ == '__main__':
     # Create the data loaders for training and validation
     train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True,num_workers=4)
     val_loader = DataLoader(val_dataset, batch_size=128, shuffle=True,num_workers=4)
-    list_of_classes = os.listdir(r"C:\Users\aahire\Documents\CSS581\Midterm\Data\IMAGES_Split_HighPass\train")
+    list_of_classes = os.listdir(r"C:\Users\aahire\Documents\CSS581\Midterm\Data\Small_Dataset\train")
     print(list_of_classes)
     classes = list(train_dataset.class_to_idx.keys())
     classes.sort()
@@ -67,7 +110,7 @@ if __name__ == '__main__':
         nn.Linear(4096, 4096),
         nn.ReLU(inplace=True),
         nn.Dropout(0.5),
-        nn.Linear(4096, 3)
+        nn.Linear(4096, len(list_of_classes))
     )
 
     ## uncomment for CPU
@@ -184,3 +227,5 @@ if __name__ == '__main__':
 
     # Save the model
     torch.save(model, 'vgg16_model.pth')
+
+
